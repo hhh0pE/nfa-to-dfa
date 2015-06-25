@@ -8,10 +8,11 @@ import (
 )
 
 type DFA struct {
-	begin, end *DFA
+	begin, end *Node
 	nodes      []*Node
 }
 
+<<<<<<< HEAD
 func (nfa *DFA) addNode(new_node *Node) {
     new_node.Id = len(nfa.nodes)
     new_node.Directions = make(map[string]*Node)
@@ -19,6 +20,9 @@ func (nfa *DFA) addNode(new_node *Node) {
 }
 
 func isArraysEqual(arr []int, arr2 []int) bool {
+=======
+func isIntArraysEqual(arr []int, arr2 []int) bool {
+>>>>>>> 279fdaf47b1048abb5ee781eae6fd5f1cd22a410
     if len(arr) != len(arr2) {
         return false
     }
@@ -41,6 +45,7 @@ func inIntArray(arr []int, num int) bool {
     return false
 }
 
+<<<<<<< HEAD
 func inStringArray(arr []string, item string) bool {
     for _, val := range arr {
         if val == item {
@@ -51,10 +56,24 @@ func inStringArray(arr []string, item string) bool {
 }
 
 func walkFrom(node *NFA.Node, ids *[]int, symbol string, strict bool) {
+=======
+func inStringArray(arr []string, str string) bool {
+    for _, val := range arr {
+        if val == str {
+            return true
+        }
+    }
+
+    return false
+}
+
+func walkFrom(node *NFA.Node, ids *[]int, symbol string) {
+>>>>>>> 279fdaf47b1048abb5ee781eae6fd5f1cd22a410
     if node == nil {
         return
     }
     if node.Left != nil && (node.LeftSymbol == "" || node.LeftSymbol == symbol) {
+<<<<<<< HEAD
         if strict && node.LeftSymbol=="" {
             return
         }
@@ -69,11 +88,25 @@ func walkFrom(node *NFA.Node, ids *[]int, symbol string, strict bool) {
         if strict && node.RightSymbol=="" {
             return
         }
+=======
+//        fmt.Println("left if")
+        if inIntArray(*ids, node.Left.Id) {
+           return
+        }
+        *ids = append(*ids, node.Left.Id)
+        walkFrom(node.Left, ids, symbol)
+    }
+    if node.Right != nil && (node.RightSymbol == "" || node.RightSymbol == symbol){
+>>>>>>> 279fdaf47b1048abb5ee781eae6fd5f1cd22a410
         if inIntArray(*ids, node.Right.Id) {
             return
         }
         *ids = append(*ids, node.Right.Id)
+<<<<<<< HEAD
         walkFrom(node.Right, ids, symbol, strict)
+=======
+        walkFrom(node.Right, ids, symbol)
+>>>>>>> 279fdaf47b1048abb5ee781eae6fd5f1cd22a410
     }
     // return ids
 }
@@ -90,11 +123,8 @@ func NewFromNFA (nfa *NFA.NFA) *DFA {
     type NFATemp struct {
         Symbols map[string][]int
     }
-    tmp_nodes :=  make([]NFATemp, nfa.Length())
-    for i,_ := range tmp_nodes {
-        tmp_nodes[i].Symbols = make(map[string][]int)
-    }
 
+<<<<<<< HEAD
     nfa_alphabet := []string{}
 
     // making big table for help
@@ -251,6 +281,73 @@ func NewFromNFA (nfa *NFA.NFA) *DFA {
     fmt.Printf("relations: %#v\n", relations)
 
     return &dfa
+=======
+    NodeBucketIds := make(map[int][]int)
+
+
+    var dfa_nodes_count int
+
+    var symbols []string
+
+    for _, node := range nfa.Nodes() {
+        if node.LeftSymbol!="" && !inStringArray(symbols, node.LeftSymbol) {
+            symbols = append(symbols, node.LeftSymbol)
+        }
+        if node.RightSymbol!="" && !inStringArray(symbols, node.RightSymbol) {
+            symbols = append(symbols, node.RightSymbol)
+        }
+    }
+
+//    nodes := make(map[int]map[string]int)
+
+    var tmp_nodes []int
+    tmp_nodes = append(tmp_nodes, nfa.Nodes()[0].Id)
+    walkFrom(nfa.Nodes()[0], &tmp_nodes, "")
+    NodeBucketIds[dfa_nodes_count] = tmp_nodes
+    dfa_nodes_count++
+
+    fmt.Println(NodeBucketIds)
+
+//    for _, node := range nfa.Nodes() {
+//
+//    }
+//
+//    var nodes []int
+//    walkFrom(nfa.Nodes()[0], &nodes, "")
+//    fmt.Printf("%+v\n", nodes)
+
+//    for _, node := range nfa.Nodes() {
+//        var nodes []int
+//        nodes = append(nodes, node.Id)
+//        walkFrom(node, &nodes, "")
+//        fmt.Printf("%+v: %+v\n", node, nodes)
+//    }
+//    tmp_nodes :=  make([]NFATemp, nfa.Length())
+//    for i,_ := range tmp_nodes {
+//        tmp_nodes[i].Symbols = make(map[string][]int)
+//    }
+//
+//    for i, node := range nfa.Nodes() {
+//        fmt.Printf("NFA Node: %+v\n", node)
+//        if node.LeftSymbol != "" && node.Left != nil {
+//            var nodes []int
+//            nodes = append(nodes, node.Left.Id)
+//            walkFrom(node.Left, &nodes)
+//            tmp_nodes[i].Symbols[node.LeftSymbol] = nodes
+//        }
+//        if node.RightSymbol != "" && node.Right != nil {
+//            var nodes []int
+//            nodes = append(nodes, node.Right.Id)
+//            walkFrom(node.Right, &nodes)
+//            tmp_nodes[i].Symbols[node.RightSymbol] = nodes
+//        }
+//    }
+//
+//    for i, tmp := range tmp_nodes {
+//        fmt.Printf("%d %+v\n", i, tmp)
+//    }
+    return &DFA{}
+>>>>>>> 279fdaf47b1048abb5ee781eae6fd5f1cd22a410
 }
 
 func (dfa *DFA) PrintDFA() {
