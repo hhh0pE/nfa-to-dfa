@@ -3,6 +3,8 @@ package DFA
 import (
     "fmt"
     "github.com/hhh0pE/REtoNFA/NFA"
+    "strings"
+    "strconv"
 )
 
 type DFA struct {
@@ -10,7 +12,11 @@ type DFA struct {
 	nodes      []*Node
 }
 
-
+func (nfa *DFA) addNode(new_node *Node) {
+    new_node.Id = len(nfa.nodes)
+    new_node.Directions = make(map[string]*Node)
+    nfa.nodes = append(nfa.nodes, new_node)
+}
 
 func isArraysEqual(arr []int, arr2 []int) bool {
     if len(arr) != len(arr2) {
@@ -29,6 +35,15 @@ func isArraysEqual(arr []int, arr2 []int) bool {
 func inIntArray(arr []int, num int) bool {
     for _, val := range arr {
         if val == num {
+            return true
+        }
+    }
+    return false
+}
+
+func inStringArray(arr []string, item string) bool {
+    for _, val := range arr {
+        if val == item {
             return true
         }
     }
@@ -63,6 +78,14 @@ func walkFrom(node *NFA.Node, ids *[]int, symbol string, strict bool) {
     // return ids
 }
 
+func makeKeyFromIntArray(arr []int) string {
+    key := fmt.Sprintf("%v", arr)
+    key = strings.Replace(key, "[", "", 1)
+    key = strings.Replace(key, "]", "", 1)
+
+    return key
+}
+
 func NewFromNFA (nfa *NFA.NFA) *DFA {
     type NFATemp struct {
         Symbols map[string][]int
@@ -72,6 +95,8 @@ func NewFromNFA (nfa *NFA.NFA) *DFA {
         tmp_nodes[i].Symbols = make(map[string][]int)
     }
 
+    nfa_alphabet := []string{}
+
     // making big table for help
     for i, node := range nfa.Nodes() {
         if node.LeftSymbol != "" && node.Left != nil {
@@ -79,14 +104,22 @@ func NewFromNFA (nfa *NFA.NFA) *DFA {
             nodes = append(nodes, node.Left.Id)
             walkFrom(node.Left, &nodes, "", false)
             tmp_nodes[i].Symbols[node.LeftSymbol] = nodes
+            if !inStringArray(nfa_alphabet, node.LeftSymbol) {
+                nfa_alphabet = append(nfa_alphabet, node.LeftSymbol)
+            }
         }
         if node.RightSymbol != "" && node.Right != nil {
             var nodes []int
             nodes = append(nodes, node.Right.Id)
             walkFrom(node.Right, &nodes, "", false)
             tmp_nodes[i].Symbols[node.RightSymbol] = nodes
+            if !inStringArray(nfa_alphabet, node.RightSymbol) {
+                nfa_alphabet = append(nfa_alphabet, node.RightSymbol)
+            }
         }
     }
+
+    fmt.Println(nfa_alphabet)
 
     tmp := make(map[string][][]int)
 
@@ -98,59 +131,126 @@ func NewFromNFA (nfa *NFA.NFA) *DFA {
 
     fmt.Printf("%+v\n", tmp)
 
+    alphabet := []string{}
+    for i:='A'; i<'Z'; i++ {
+        alphabet = append(alphabet, string(i))
+    }
+
     var start_nodes []int
     start_nodes = append(start_nodes, nfa.Nodes()[0].Id)
     walkFrom(nfa.Nodes()[0], &start_nodes, "", false)
-    fmt.Printf("start nodes: %v\n", start_nodes)
+
 
     rules := make(map[string]string)
+    relations := make(map[string][]string)
 
-    var start_a, start_b []int
-    for _, id := range start_nodes {
+    fmt.Printf("start_nodes: %#v\n", start_nodes)
 
-        walkFrom(nfa.Nodes()[id], &start_a, "a", true)
-        walkFrom(nfa.Nodes()[id], &start_b, "b", true)
-    }
+    rules[makeKeyFromIntArray(start_nodes)] = alphabet[0]
 
+    alphabet = alphabet[1:]
 
-    var a_ids []int
-    for _, ids := range tmp["a"] {
-        for _, id := range start_a {
-            if inIntArray(ids, id) {
-                a_ids = append(a_ids, ids...)
+    is_fill := false
+    for !is_fill {
+        is_fill = true
+        for rule_key, rule_symb := range rules {
+            rule_ids := strings.Split(rule_key, " ")
+            relations[rule_symb] = make([]string, len(nfa_alphabet))
+            for ai, alphabet_symb := range nfa_alphabet {
+                var ids, full_ids []int
+                for _, sid := range rule_ids {
+                    id, _ := strconv.Atoi(sid)
+                    walkFrom(nfa.Nodes()[id], &ids, alphabet_symb, true)
+                }
+
+                if len(ids)==0 {
+                    relations[rule_symb][ai] = "Error"
+                    rules[""] = "Error"
+                    continue
+                }
+
+                for _, id := range ids {
+                    for _, id_arr := range tmp[alphabet_symb] {
+                        if inIntArray(id_arr, id) {
+                            full_ids = append(full_ids, id_arr...)
+                        }
+                    }
+                }
+
+                symb, exist := rules[makeKeyFromIntArray(full_ids)]
+                if !exist {
+                    rules[makeKeyFromIntArray(full_ids)] = alphabet[0]
+                    symb = alphabet[0]
+                    alphabet = alphabet[1:]
+                    is_fill = false
+                }
+
+                relations[rule_symb][ai] = symb
             }
         }
     }
-    if _, exist := rules[fmt.Sprintf("%v", a_ids)]; !exist {
-        rules[fmt.Sprintf("%v", a_ids)] = "A"
-    }
 
-    var b_ids []int
-    
-    for _, ids := range tmp["b"] {
-        for _, id := range start_b {
-            if inIntArray(ids, id) {
-                b_ids = append(b_ids, ids...)
+    final_states := make(map[string]bool, len(rules))
+    for rule_ids, symb := range rules {
+        final_states[symb] = false
+        sids := strings.Split(rule_ids, " ")
+        for _, sid := range sids {
+            id, _ := strconv.Atoi(sid)
+            if nfa.Nodes()[id] == nfa.Last() {
+                final_states[symb] = true
             }
         }
     }
 
-    if _, exist := rules[fmt.Sprintf("%v", b_ids)]; !exist {
-        rules[fmt.Sprintf("%v", b_ids)] = "B"
+    dfa := DFA{}
+    nodes := make(map[string]*Node)
+    for _, symb := range rules {
+        new_node := Node{}
+        if final_states[symb] {
+            new_node.IsFinal = true
+        }
+        dfa.addNode(&new_node)
+        nodes[symb] = &new_node
+    }
+//
+    for symb_from, symbs := range relations {
+        for i, symb_to := range symbs {
+            nodes[symb_from].Directions[nfa_alphabet[i]] = nodes[symb_to]
+        }
     }
 
+    fmt.Printf("relations: %v\n", nodes)
 
-    fmt.Printf("rules: %+v\n", rules)
-    fmt.Printf("a: %v\n", a_ids)
+//    for srule_ids, rule_symbol := range rules {
+//        rule_ids := strings.Split(srule_ids, " ")
+//
+//        for _, alphabet_symb := range nfa_alphabet {
+//            var ids []int
+//            for _, sid := range rule_ids {
+//                id, _ := strconv.Atoi(sid)
+//                walkFrom(nfa.Nodes()[id], &ids, alphabet_symb, false)
+//            }
+//
+//            key := fmt.Sprintf("%v", ids)
+//            key = strings.Replace(key, "[", "", 1)
+//            key = strings.Replace(key, "]", "", 1)
+//
+//            relation_symb, exist := rules[key];
+//            if !exist {
+//                relation_symb = alphabet[0]
+//                rules[key] = relation_symb
+//                alphabet = alphabet[1:]
+//            }
+//
+//            relations[rule_symbol] = append(relations[rule_symbol], relation_symb)
+//        }
+//    }
 
 
+    fmt.Printf("rules: %#v\n", rules)
+    fmt.Printf("relations: %#v\n", relations)
 
-
-    fmt.Printf("b: %v\n", b_ids)
-
-    fmt.Printf("start_a: %v\n", start_a)
-    fmt.Printf("start_b: %v\n", start_b)
-    return &DFA{}
+    return &dfa
 }
 
 func (dfa *DFA) PrintDFA() {

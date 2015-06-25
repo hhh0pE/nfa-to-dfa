@@ -1,34 +1,23 @@
 package DFA
+import "fmt"
 
-import (
-    "github.com/hhh0pE/REtoNFA/NFA"
-    "fmt"
-)
 
 type Node struct {
-	NFA.Node
-	is_final bool
+    Id int
+	Directions map[string]*Node
+    IsFinal bool
 }
 //
-//func (n *Node) Name() string {
-//    return fmt.Sprintf("Node%d", n.Node.Id)
-//}
+func (n *Node) Name() string {
+    return string('A'+n.Id)
+}
 
 func (n *Node) toString() string {
-    left_symbol, right_symbol := n.LeftSymbol, n.RightSymbol
-    if len(left_symbol) == 0 {
-        left_symbol = "λ"
-    }
-    if len(right_symbol) == 0 {
-        right_symbol = "λ"
-    }
 
-    var left_name, right_name string
-    if n.Left != nil {
-        left_name = n.Left.Name()
+    var output string
+    output += n.Name()+":\n"
+    for symb, relation_node := range n.Directions {
+        output += fmt.Sprintf("\t%s -> %s\n", symb, relation_node.Name())
     }
-    if n.Right != nil {
-        right_name = n.Right.Name()
-    }
-    return fmt.Sprintf("%s<-%s-%s-%s->%s", left_name, left_symbol, n.Name(), right_symbol, right_name)
+    return output
 }
